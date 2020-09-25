@@ -103,11 +103,20 @@ class ShoppingCartController {
       })
   }
 
-  static async checkoutPatchHandler(req, res, next) { // params: cartId path: /cart/checkout
+  static async checkoutPatchHandler(req, res, next) { // path: /cart/checkout
     try {
       const cartInfo = await ShoppingCart.findOne({ where: { UserId: req.tokenPayload.id } })
+      const toBePurchased = await CartProduct.findAll({
+        where: {ShoppingCartId: cartInfo.id, status:0}, 
+        include: Product})
       const result = await CartProduct.update({ status: 1 },
         { where: { ShoppingCartId: cartInfo.id, status: 0 } })
+
+      let temp = await toBePurchased.map((el)=>{
+        let newStock = el.Product.stock - toBePurchased.amount
+        return Product.update({stock: newStock}, {where: {id: el.ProductId}})
+      })
+
       res.status(200).json({ message: 'Checked out successfully!' })
     } catch (err) {
       next(err);
